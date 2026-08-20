@@ -1,0 +1,7 @@
+{
+  "name": "AutoTyper",
+  "description": "An offline Android custom keyboard that automatically types text character-by-character at configurable speeds.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

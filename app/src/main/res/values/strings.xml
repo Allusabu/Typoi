@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">AutoTyper</string>
+    <string name="ime_name">AutoTyper Keyboard</string>
+    <string name="ime_settings">AutoTyper Settings</string>
+    <string name="status_idle">Idle</string>
+    <string name="status_typing">Typing</string>
+    <string name="status_paused">Paused</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="status_completed">Completed</string>
+    <string name="btn_start">Start</string>
+    <string name="btn_stop">Stop</string>
+    <string name="btn_pause">Pause</string>
+    <string name="btn_resume">Resume</string>
+    <string name="btn_clear">Clear</string>
+    <string name="btn_paste">Paste</string>
+    <string name="btn_switch_keyboard">Switch Keyboard</string>
+    <string name="speed_label">Typing Speed</string>
+</resources>
+
