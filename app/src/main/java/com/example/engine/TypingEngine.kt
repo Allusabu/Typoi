@@ -8,6 +8,7 @@ import android.os.VibratorManager
 import android.view.inputmethod.InputConnection
 import com.example.data.SettingsManager
 import com.example.notification.AutoTyperNotificationManager
+import com.example.util.AppLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,6 +49,7 @@ object TypingEngine {
     fun init(context: Context) {
         val app = context.applicationContext
         this.appContext = app
+        AppLogger.i("TypingEngine", "TypingEngine initialized")
 
         // Initialize notification channel and reactive notification bar updater
         AutoTyperNotificationManager.createNotificationChannel(app)
@@ -82,12 +84,14 @@ object TypingEngine {
 
     fun setInputConnectionSupplier(supplier: (() -> InputConnection?)?) {
         this.inputConnectionSupplier = supplier
+        AppLogger.d("TypingEngine", "InputConnection supplier updated (hasSupplier=${supplier != null})")
     }
 
     fun updateSpeed(speedMs: Long) {
         val clamped = speedMs.coerceIn(10L, 2000L)
         this.currentSpeedMs = clamped
         _progressState.update { it.copy(speedMs = clamped) }
+        AppLogger.d("TypingEngine", "Speed updated to ${clamped}ms")
     }
 
     fun setLooping(loop: Boolean) {
@@ -104,6 +108,7 @@ object TypingEngine {
         countdownSec: Int = 0,
         isLoop: Boolean = _progressState.value.isLooping
     ) {
+        AppLogger.i("TypingEngine", "start() requested. Text length=${text.length}, speed=${speedMs}ms, countdown=${countdownSec}s, loop=$isLoop")
         // Stop any active job immediately
         typingJob?.cancel()
         isPaused = false
@@ -111,6 +116,7 @@ object TypingEngine {
 
         val graphemes = UnicodeHelper.splitIntoGraphemes(text)
         if (graphemes.isEmpty()) {
+            AppLogger.w("TypingEngine", "start() aborted: Text is empty")
             _progressState.update {
                 it.copy(
                     status = TypingStatus.IDLE,
@@ -141,6 +147,7 @@ object TypingEngine {
             try {
                 // Countdown if requested
                 if (countdownSec > 0) {
+                    AppLogger.d("TypingEngine", "Beginning countdown: $countdownSec seconds")
                     for (c in countdownSec downTo 1) {
                         _progressState.update { it.copy(countdownRemaining = c, status = TypingStatus.COUNTDOWN) }
                         delay(1000L)
@@ -148,6 +155,7 @@ object TypingEngine {
                 }
 
                 _progressState.update { it.copy(status = TypingStatus.TYPING, countdownRemaining = 0) }
+                AppLogger.i("TypingEngine", "Typing started: ${graphemes.size} characters")
 
                 do {
                     var index = 0
@@ -173,6 +181,7 @@ object TypingEngine {
                                 ic.commitText(grapheme, 1)
                                 true
                             } else {
+                                AppLogger.w("TypingEngine", "InputConnection not available at character $index ('${UnicodeHelper.formatDisplayChar(grapheme)}')")
                                 false
                             }
                         }
@@ -188,6 +197,7 @@ object TypingEngine {
 
                 } while (_progressState.value.isLooping)
 
+                AppLogger.i("TypingEngine", "Typing completed successfully")
                 _progressState.update {
                     it.copy(
                         status = TypingStatus.COMPLETED,
@@ -196,7 +206,7 @@ object TypingEngine {
                     )
                 }
             } catch (e: CancellationException) {
-                // Stopped by user
+                AppLogger.i("TypingEngine", "Typing cancelled by user")
                 _progressState.update {
                     it.copy(
                         status = TypingStatus.STOPPED,
@@ -204,6 +214,7 @@ object TypingEngine {
                     )
                 }
             } catch (e: Exception) {
+                AppLogger.e("TypingEngine", "Typing error: ${e.message}", e)
                 _progressState.update {
                     it.copy(
                         status = TypingStatus.STOPPED,
@@ -220,6 +231,7 @@ object TypingEngine {
     fun pause() {
         if (_progressState.value.status == TypingStatus.TYPING || _progressState.value.status == TypingStatus.COUNTDOWN) {
             isPaused = true
+            AppLogger.i("TypingEngine", "Typing paused at character ${_progressState.value.current}/${_progressState.value.total}")
             _progressState.update { it.copy(status = TypingStatus.PAUSED) }
         }
     }
@@ -230,6 +242,7 @@ object TypingEngine {
     fun resume() {
         if (_progressState.value.status == TypingStatus.PAUSED) {
             isPaused = false
+            AppLogger.i("TypingEngine", "Typing resumed")
             _progressState.update { it.copy(status = TypingStatus.TYPING) }
         }
     }
@@ -241,6 +254,7 @@ object TypingEngine {
         isPaused = false
         typingJob?.cancel()
         typingJob = null
+        AppLogger.i("TypingEngine", "Typing stopped")
         _progressState.update {
             it.copy(
                 status = TypingStatus.STOPPED,

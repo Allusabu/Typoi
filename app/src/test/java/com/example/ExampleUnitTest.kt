@@ -6,7 +6,12 @@ import com.example.engine.UnicodeHelper
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [26])
 class ExampleUnitTest {
 
     @Test
@@ -28,5 +33,18 @@ class ExampleUnitTest {
         TypingEngine.stop()
         assertEquals(TypingStatus.STOPPED, TypingEngine.progressState.value.status)
     }
+
+    @Test
+    fun testServiceLifecycleOwnerLifecycle() {
+        val owner = com.example.service.ServiceLifecycleOwner()
+        owner.onCreate()
+        owner.onStart()
+        assertEquals(androidx.lifecycle.Lifecycle.State.RESUMED, owner.lifecycle.currentState)
+        owner.onStop()
+        assertEquals(androidx.lifecycle.Lifecycle.State.STARTED, owner.lifecycle.currentState)
+        owner.onDestroy()
+        assertEquals(androidx.lifecycle.Lifecycle.State.DESTROYED, owner.lifecycle.currentState)
+    }
 }
+
 

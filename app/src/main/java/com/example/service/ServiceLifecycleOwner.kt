@@ -1,5 +1,6 @@
 package com.example.service
 
+import android.os.Bundle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -14,6 +15,7 @@ class ServiceLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner, ViewModel
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
     private val appViewModelStore = ViewModelStore()
+    private var isRestored = false
 
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
@@ -25,22 +27,33 @@ class ServiceLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner, ViewModel
         get() = appViewModelStore
 
     fun onCreate() {
-        savedStateRegistryController.performRestore(null)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+        if (!isRestored) {
+            try {
+                savedStateRegistryController.performAttach()
+                savedStateRegistryController.performRestore(Bundle())
+            } catch (_: Exception) {
+            }
+            isRestored = true
+        }
+        lifecycleRegistry.currentState = Lifecycle.State.CREATED
     }
 
     fun onStart() {
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        onCreate()
+        if (lifecycleRegistry.currentState != Lifecycle.State.RESUMED) {
+            lifecycleRegistry.currentState = Lifecycle.State.RESUMED
+        }
     }
 
     fun onStop() {
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        if (lifecycleRegistry.currentState > Lifecycle.State.STARTED) {
+            lifecycleRegistry.currentState = Lifecycle.State.STARTED
+        }
     }
 
     fun onDestroy() {
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         appViewModelStore.clear()
     }
 }
+

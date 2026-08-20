@@ -95,11 +95,54 @@ import com.example.engine.UnicodeHelper
 fun AutoTyperKeyboardScreen(
     settingsManager: SettingsManager,
     snippetRepository: SnippetRepository,
+    onKeyTyped: (String) -> Unit = {},
     onSwitchKeyboard: () -> Unit,
     onBackspace: () -> Unit,
     onEnter: () -> Unit,
     onSpace: () -> Unit,
     onHideKeyboard: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isFullDashboard by remember { mutableStateOf(false) }
+
+    if (!isFullDashboard) {
+        MiniKeyboardView(
+            settingsManager = settingsManager,
+            snippetRepository = snippetRepository,
+            onKeyTyped = onKeyTyped,
+            onBackspace = onBackspace,
+            onEnter = onEnter,
+            onSpace = onSpace,
+            onSwitchKeyboard = onSwitchKeyboard,
+            onHideKeyboard = onHideKeyboard,
+            onToggleFullView = { isFullDashboard = true },
+            modifier = modifier
+        )
+    } else {
+        FullDashboardKeyboardScreen(
+            settingsManager = settingsManager,
+            snippetRepository = snippetRepository,
+            onSwitchKeyboard = onSwitchKeyboard,
+            onBackspace = onBackspace,
+            onEnter = onEnter,
+            onSpace = onSpace,
+            onHideKeyboard = onHideKeyboard,
+            onToggleMiniView = { isFullDashboard = false },
+            modifier = modifier
+        )
+    }
+}
+
+@Composable
+fun FullDashboardKeyboardScreen(
+    settingsManager: SettingsManager,
+    snippetRepository: SnippetRepository,
+    onSwitchKeyboard: () -> Unit,
+    onBackspace: () -> Unit,
+    onEnter: () -> Unit,
+    onSpace: () -> Unit,
+    onHideKeyboard: () -> Unit,
+    onToggleMiniView: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val progressState by TypingEngine.progressState.collectAsState()
@@ -123,6 +166,36 @@ fun AutoTyperKeyboardScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
+            // Top Row with Mini View Switcher Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "AutoTyper Dashboard",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = Color(0xFFD0BCFF)
+                )
+                Button(
+                    onClick = onToggleMiniView,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF381E72),
+                        contentColor = Color(0xFFD0BCFF)
+                    ),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    modifier = Modifier.height(28.dp)
+                ) {
+                    Icon(Icons.Default.Keyboard, contentDescription = "Mini Keyboard", modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Mini Keyboard", fontSize = 11.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
             // 1. Top Status & Progress Bar
             KeyboardStatusBar(
                 progressState = progressState,
@@ -459,6 +532,7 @@ fun AutoTyperKeyboardScreen(
         }
     }
 }
+
 
 @Composable
 fun KeyboardStatusBar(

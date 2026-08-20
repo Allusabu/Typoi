@@ -44,13 +44,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Notifications
@@ -102,8 +103,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -122,7 +126,9 @@ import com.example.engine.TypingEngine
 import com.example.engine.TypingProgress
 import com.example.engine.TypingStatus
 import com.example.engine.UnicodeHelper
+import com.example.ui.LogsScreen
 import com.example.ui.theme.MyApplicationTheme
+import com.example.util.AppLogger
 
 class MainActivity : ComponentActivity() {
 
@@ -133,6 +139,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        AppLogger.i("MainActivity", "App launched on Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
         TypingEngine.init(applicationContext)
         settingsManager = SettingsManager(this)
         snippetRepository = SnippetRepository(this)
@@ -144,9 +151,11 @@ class MainActivity : ComponentActivity() {
                     settingsManager = settingsManager,
                     snippetRepository = snippetRepository,
                     onOpenImeSettings = {
+                        AppLogger.i("MainActivity", "Navigating to Android Input Method Settings")
                         startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
                     },
                     onSwitchKeyboard = {
+                        AppLogger.i("MainActivity", "Requesting Input Method Picker")
                         val imm = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager
                         imm?.showInputMethodPicker()
                     }
@@ -160,7 +169,8 @@ enum class NavigationTab(val label: String, val icon: @Composable () -> Unit) {
     SANDBOX("Test Sandbox", { Icon(Icons.Default.TextFields, contentDescription = "Sandbox") }),
     TEMPLATES("Snippets", { Icon(Icons.Default.ContentCopy, contentDescription = "Snippets") }),
     SETTINGS("Settings", { Icon(Icons.Default.Settings, contentDescription = "Settings") }),
-    GUIDE("Guide", { Icon(Icons.Default.Help, contentDescription = "Guide") })
+    LOGS("Logs", { Icon(Icons.AutoMirrored.Filled.Article, contentDescription = "Logs") }),
+    GUIDE("Guide", { Icon(Icons.AutoMirrored.Filled.Help, contentDescription = "Guide") })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -321,7 +331,11 @@ fun AutoTyperMainScreen(
             when (selectedTab) {
                 NavigationTab.SANDBOX -> SandboxTabContent(
                     settingsManager = settingsManager,
-                    snippetRepository = snippetRepository
+                    snippetRepository = snippetRepository,
+                    isImeEnabled = isImeEnabled,
+                    isImeSelected = isImeSelected,
+                    onOpenImeSettings = onOpenImeSettings,
+                    onSwitchKeyboard = onSwitchKeyboard
                 )
                 NavigationTab.TEMPLATES -> SnippetsTabContent(
                     snippetRepository = snippetRepository,
@@ -333,6 +347,13 @@ fun AutoTyperMainScreen(
                 )
                 NavigationTab.SETTINGS -> SettingsTabContent(
                     settingsManager = settingsManager
+                )
+                NavigationTab.LOGS -> LogsScreen(
+                    isImeEnabled = isImeEnabled,
+                    isImeSelected = isImeSelected,
+                    onOpenImeSettings = onOpenImeSettings,
+                    onSwitchKeyboard = onSwitchKeyboard,
+                    onRefreshStatus = { checkImeStatus() }
                 )
                 NavigationTab.GUIDE -> GuideTabContent(
                     onOpenSettings = onOpenImeSettings,
@@ -472,6 +493,10 @@ fun StatusChip(label: String, isActive: Boolean) {
 fun SandboxTabContent(
     settingsManager: SettingsManager,
     snippetRepository: SnippetRepository,
+    isImeEnabled: Boolean = true,
+    isImeSelected: Boolean = true,
+    onOpenImeSettings: () -> Unit = {},
+    onSwitchKeyboard: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val progressState by TypingEngine.progressState.collectAsState()
@@ -481,6 +506,9 @@ fun SandboxTabContent(
     var testFieldText by remember { mutableStateOf("") }
     var scriptInputText by remember { mutableStateOf(settings.lastInputText) }
     var selectedSpeedMs by remember { mutableStateOf(settings.defaultSpeedMs) }
+
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     LazyColumn(
         modifier = modifier
@@ -521,12 +549,14 @@ fun SandboxTabContent(
                             )
                         }
 
-                        if (testFieldText.isNotEmpty()) {
-                            TextButton(
-                                onClick = { testFieldText = "" },
-                                modifier = Modifier.testTag("clear_sandbox_button")
-                            ) {
-                                Text("Clear Field", color = Color(0xFFF2B8B5), fontSize = 12.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (testFieldText.isNotEmpty()) {
+                                TextButton(
+                                    onClick = { testFieldText = "" },
+                                    modifier = Modifier.testTag("clear_sandbox_button")
+                                ) {
+                                    Text("Clear", color = Color(0xFFF2B8B5), fontSize = 12.sp)
+                                }
                             }
                         }
                     }
@@ -539,10 +569,11 @@ fun SandboxTabContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 100.dp, max = 160.dp)
+                            .focusRequester(focusRequester)
                             .testTag("sandbox_target_input"),
                         placeholder = {
                             Text(
-                                "Tap here to focus this field, then use AutoTyper keyboard or the controls below to type letter-by-letter!",
+                                "Tap here to focus this field and pop up the keyboard!",
                                 color = Color(0xFF938F99),
                                 fontSize = 13.sp
                             )
@@ -562,18 +593,32 @@ fun SandboxTabContent(
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Button(
+                            onClick = {
+                                focusRequester.requestFocus()
+                                keyboardController?.show()
+                                AppLogger.i("MainActivity", "User tapped 'Focus & Open Keyboard' button")
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF381E72),
+                                contentColor = Color(0xFFD0BCFF)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Icon(Icons.Default.Keyboard, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Focus & Open Keyboard", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
                         Text(
                             "Length: ${testFieldText.length} chars",
-                            color = Color(0xFF938F99),
-                            fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                        Text(
-                            "Words: ${testFieldText.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }.size}",
                             color = Color(0xFF938F99),
                             fontSize = 11.sp,
                             fontFamily = FontFamily.Monospace
