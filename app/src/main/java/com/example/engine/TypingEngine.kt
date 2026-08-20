@@ -6,6 +6,8 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.inputmethod.InputConnection
+import com.example.data.SettingsManager
+import com.example.notification.AutoTyperNotificationManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +29,7 @@ object TypingEngine {
 
     private val engineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var typingJob: Job? = null
+    private var notifJob: Job? = null
 
     private val _progressState = MutableStateFlow(TypingProgress())
     val progressState: StateFlow<TypingProgress> = _progressState.asStateFlow()
@@ -43,7 +46,34 @@ object TypingEngine {
     private var hapticFeedbackEnabled: Boolean = false
 
     fun init(context: Context) {
-        this.appContext = context.applicationContext
+        val app = context.applicationContext
+        this.appContext = app
+
+        // Initialize notification channel and reactive notification bar updater
+        AutoTyperNotificationManager.createNotificationChannel(app)
+
+        notifJob?.cancel()
+        notifJob = engineScope.launch {
+            _progressState.collect { progress ->
+                val ctx = appContext ?: return@collect
+                val settings = SettingsManager(ctx).settings.value
+                if (settings.showNotificationControls) {
+                    AutoTyperNotificationManager.updateNotification(ctx, progress)
+                } else {
+                    AutoTyperNotificationManager.cancelNotification(ctx)
+                }
+            }
+        }
+    }
+
+    fun refreshNotification() {
+        val ctx = appContext ?: return
+        val settings = SettingsManager(ctx).settings.value
+        if (settings.showNotificationControls) {
+            AutoTyperNotificationManager.updateNotification(ctx, _progressState.value)
+        } else {
+            AutoTyperNotificationManager.cancelNotification(ctx)
+        }
     }
 
     fun setHapticFeedback(enabled: Boolean) {

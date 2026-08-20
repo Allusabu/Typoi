@@ -11,6 +11,7 @@ data class AppSettings(
     val countdownSec: Int = 0,
     val hapticFeedback: Boolean = true,
     val loopRepeat: Boolean = false,
+    val showNotificationControls: Boolean = true,
     val lastInputText: String = "Hello World! AutoTyper is ready to type letter by letter 🚀"
 )
 
@@ -28,6 +29,7 @@ class SettingsManager(context: Context) {
             countdownSec = prefs.getInt(KEY_COUNTDOWN, 0),
             hapticFeedback = prefs.getBoolean(KEY_HAPTIC, true),
             loopRepeat = prefs.getBoolean(KEY_LOOP, false),
+            showNotificationControls = prefs.getBoolean(KEY_NOTIF_CONTROLS, true),
             lastInputText = prefs.getString(KEY_LAST_TEXT, "Hello World! AutoTyper is ready to type letter by letter 🚀") ?: ""
         )
     }
@@ -52,6 +54,11 @@ class SettingsManager(context: Context) {
         _settings.value = _settings.value.copy(loopRepeat = loop)
     }
 
+    fun updateNotificationControls(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_NOTIF_CONTROLS, enabled).apply()
+        _settings.value = _settings.value.copy(showNotificationControls = enabled)
+    }
+
     fun saveLastText(text: String) {
         prefs.edit().putString(KEY_LAST_TEXT, text).apply()
         _settings.value = _settings.value.copy(lastInputText = text)
@@ -62,6 +69,7 @@ class SettingsManager(context: Context) {
         private const val KEY_COUNTDOWN = "pref_countdown_sec"
         private const val KEY_HAPTIC = "pref_haptic"
         private const val KEY_LOOP = "pref_loop"
+        private const val KEY_NOTIF_CONTROLS = "pref_notif_controls"
         private const val KEY_LAST_TEXT = "pref_last_text"
     }
 }

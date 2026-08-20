@@ -1,16 +1,32 @@
 package com.example
 
-import org.junit.Assert.*
+import com.example.engine.TypingEngine
+import com.example.engine.TypingStatus
+import com.example.engine.UnicodeHelper
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Example local unit test, which will execute on the development machine (host).
- *
- * See [testing documentation](http://d.android.com/tools/testing).
- */
 class ExampleUnitTest {
-  @Test
-  fun addition_isCorrect() {
-    assertEquals(4, 2 + 2)
-  }
+
+    @Test
+    fun testUnicodeGraphemeSplitting() {
+        val text = "Hello 🚀👨‍👩‍👧‍👦 world!"
+        val graphemes = UnicodeHelper.splitIntoGraphemes(text)
+        assertTrue(graphemes.isNotEmpty())
+        assertEquals("H", graphemes[0])
+    }
+
+    @Test
+    fun testTypingEngineStateTransitions() {
+        TypingEngine.reset()
+        assertEquals(TypingStatus.IDLE, TypingEngine.progressState.value.status)
+
+        TypingEngine.updateSpeed(120L)
+        assertEquals(120L, TypingEngine.progressState.value.speedMs)
+
+        TypingEngine.stop()
+        assertEquals(TypingStatus.STOPPED, TypingEngine.progressState.value.status)
+    }
 }
+

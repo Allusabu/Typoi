@@ -2,12 +2,17 @@ package com.example
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -48,6 +53,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -168,6 +174,24 @@ fun AutoTyperMainScreen(
     var selectedTab by remember { mutableStateOf(NavigationTab.SANDBOX) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        TypingEngine.refreshNotification()
+    }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
 
     var isImeEnabled by remember { mutableStateOf(false) }
     var isImeSelected by remember { mutableStateOf(false) }
@@ -1475,6 +1499,72 @@ fun SettingsTabContent(
                             uncheckedTrackColor = Color(0xFF49454F)
                         )
                     )
+                }
+            }
+        }
+
+        // Notification Bar Controls Toggle
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF2B2930)),
+                shape = RoundedCornerShape(20.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF49454F))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Notifications, contentDescription = null, tint = Color(0xFFD0BCFF))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text("Notification Bar Controls", color = Color(0xFFE6E1E5), fontWeight = FontWeight.SemiBold)
+                                Text("Quick Start, Pause, and Stop buttons in notification shade", color = Color(0xFF938F99), fontSize = 11.sp)
+                            }
+                        }
+                        Switch(
+                            checked = settings.showNotificationControls,
+                            onCheckedChange = {
+                                settingsManager.updateNotificationControls(it)
+                                TypingEngine.refreshNotification()
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFF381E72),
+                                checkedTrackColor = Color(0xFFD0BCFF),
+                                uncheckedThumbColor = Color(0xFF938F99),
+                                uncheckedTrackColor = Color(0xFF49454F)
+                            )
+                        )
+                    }
+                    if (settings.showNotificationControls) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFF1C1B1F), RoundedCornerShape(10.dp))
+                                .border(1.dp, Color(0xFF49454F), RoundedCornerShape(10.dp))
+                                .padding(10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "▶ Start, ⏸ Pause & ⏹ Stop actions active in notification bar",
+                                    color = Color(0xFFD0BCFF),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
