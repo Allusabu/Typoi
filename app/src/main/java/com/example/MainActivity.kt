@@ -50,7 +50,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Notifications
@@ -160,7 +160,7 @@ enum class NavigationTab(val label: String, val icon: @Composable () -> Unit) {
     SANDBOX("Test Sandbox", { Icon(Icons.Default.TextFields, contentDescription = "Sandbox") }),
     TEMPLATES("Snippets", { Icon(Icons.Default.ContentCopy, contentDescription = "Snippets") }),
     SETTINGS("Settings", { Icon(Icons.Default.Settings, contentDescription = "Settings") }),
-    GUIDE("Guide", { Icon(Icons.Default.HelpOutline, contentDescription = "Guide") })
+    GUIDE("Guide", { Icon(Icons.Default.Help, contentDescription = "Guide") })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
